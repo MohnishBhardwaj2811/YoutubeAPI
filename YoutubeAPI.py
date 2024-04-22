@@ -262,5 +262,3 @@ def search2():
     return video_id + ":" + thumbnail
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
