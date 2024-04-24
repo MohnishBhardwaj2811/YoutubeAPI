@@ -377,8 +377,22 @@ def Listen():
 
     return Listen_html(data)
     
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/Listen/Data', methods=['GET', 'POST'])
+def Listen2():
+    data = {
+            'videoId'       : request.args.get('videoId', 'No video ID provided'),
+            'thumbnail'      : request.args.get('thumbnail', 'No thumbnail provided'),
+            'title'          : request.args.get('title', 'No title provided'),
+            'publishedTimeText' : request.args.get('publishedTimeText', 'No published time provided'),
+            'views'         : request.args.get('views', 'No views provided'),
+            'Length'         : request.args.get('Length', 'No length provided') 
+            }
+    data['audio_url'] = extract_audio_url(data['videoId'])
+
+    return jsonify(data)
+    
+#if __name__ == "__main__":
+#    app.run(debug=True)
 
     
 
