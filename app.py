@@ -350,7 +350,7 @@ def search():
     global q_data
     if request.method == 'POST':
         try :
-            query = request.form['query']
+            query = request.form['query'] + " Music"
             print("Search Query:", query)
             query = query.replace(" ", "+")
             return index_html( Data_HTML(query , 0 ))
@@ -377,7 +377,7 @@ def Listen():
 
     return Listen_html(data)
     
-@app.route('/Listen/Data/', methods=['GET', 'POST'])
+@app.route('/Data/Listen', methods=['GET', 'POST'])
 def Listen2():
     data = {
             'videoId'       : request.args.get('videoId', 'No video ID provided'),
