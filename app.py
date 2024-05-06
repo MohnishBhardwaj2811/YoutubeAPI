@@ -337,7 +337,7 @@ def extract_audio_url(youtube_url):
         return audio_url
     except Exception as e:
         print("Error:", e)
-        return "404:" + e
+        return "404:" + str(e)
 
 
 ##########################################################################################################################################################
