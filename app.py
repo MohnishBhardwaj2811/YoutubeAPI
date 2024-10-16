@@ -1,10 +1,100 @@
-from flask import Flask, render_template, request,jsonify,redirect, redirect, url_for, session
+#Library!
+import yt_dlp
+from flask import Flask, render_template, request
 import json
 import requests
 from bs4 import BeautifulSoup
 import re
-from pytube import YouTube
-#################################################################################################################################
+
+#Functions!
+def yt_url(video_url):
+    youtube_url = "https://www.youtube.com/watch?v=" + video_url
+    try:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(video_url, download=False)
+            audio_url = info_dict['url']
+            
+
+        return audio_url
+    except Exception as e:
+        print("Error:", e)
+        return "404:" + str(e)
+
+def Scrap_youtube_search(url):
+    try :
+        # URL of the webpage
+        url = url
+        # Send a GET request to the URL
+        response = requests.get(url)
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Find script tags containing the variable ytInitialData
+        script_tags = soup.find_all('script', text=re.compile(r'ytInitialData'))
+        # Extract the content of ytInitialData variable
+        yt_initial_data = None
+        for script in script_tags:
+            # Search for ytInitialData assignment using regular expression
+            match = re.search(r'var ytInitialData = ({.*?});', script.text)
+            if match:
+                # Extract the content of ytInitialData
+                yt_initial_data = match.group(1)
+                break
+        return json.loads(yt_initial_data)
+    except:
+        print("Something Cause Error ! Failed Process !")
+
+
+def yt_search(search_query , typo = 0):
+    # Print the extracted ytInitialData
+    url = "https://www.youtube.com/results?search_query=" + search_query
+
+    yt_initial_data = Scrap_youtube_search(url)
+
+    html = ""
+    json_data = {}
+    for index in range(0,len(yt_initial_data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"])):
+        try:
+            Data = yt_initial_data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][index]["videoRenderer"]
+            
+            
+            json_data["Data" + str(index)] = {"videoId"   : Data["videoId"] ,
+            "thumbnail" : Data['thumbnail']['thumbnails'][-1]['url'] ,
+            "title"     : Data['title']["runs"][0]["text"] ,
+            "publishedTimeText" : Data['publishedTimeText']['simpleText'],
+            "views"     : Data['viewCountText']['simpleText'] ,
+            "Length"    : Data['lengthText']["simpleText"] } 
+            
+            Value = json_data["Data" + str(index)]
+            html += f"""
+            <div class="item horizontal-item">
+                <img src="{Data['thumbnail']['thumbnails'][-1]['url']}" alt="Item 2 Image" class="thumbnail">
+                <div class="data">
+                    <h3>{Data['title']["runs"][0]["text"]}</h3>
+                    <p>{Data['publishedTimeText']['simpleText']}</p>
+                    <p>{Data['viewCountText']['simpleText']}</p>
+                    <p>{Data['lengthText']["simpleText"]}</p>
+                    <a href="#" onclick="sendData({Value})">Details</a>
+                </div>
+            </div> """
+
+
+        except:
+            #print("Nothing! at ", index)
+            pass
+    if typo == 0 : return html 
+    else: return json_data
+
+#Web script!
+
 def index_html(Data):
     index_html = """
 <!DOCTYPE html>
@@ -255,92 +345,7 @@ def Listen_html(Data):
 """
     return html
 
-##############################################################################################################################################
-
-def Scrap_youtube_search(url):
-    try :
-        # URL of the webpage
-        url = url
-        # Send a GET request to the URL
-        response = requests.get(url)
-        # Parse the HTML content
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # Find script tags containing the variable ytInitialData
-        script_tags = soup.find_all('script', text=re.compile(r'ytInitialData'))
-        # Extract the content of ytInitialData variable
-        yt_initial_data = None
-        for script in script_tags:
-            # Search for ytInitialData assignment using regular expression
-            match = re.search(r'var ytInitialData = ({.*?});', script.text)
-            if match:
-                # Extract the content of ytInitialData
-                yt_initial_data = match.group(1)
-                break
-        return json.loads(yt_initial_data)
-    except:
-        print("Something Cause Error ! Failed Process !")
-
-def Data_HTML(search_query , typo = 0):
-    # Print the extracted ytInitialData
-    url = "https://www.youtube.com/results?search_query=" + search_query
-
-    yt_initial_data = Scrap_youtube_search(url)
-
-    html = ""
-    json_data = {}
-    for index in range(0,len(yt_initial_data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"])):
-        try:
-            Data = yt_initial_data["contents"]["twoColumnSearchResultsRenderer"]["primaryContents"]["sectionListRenderer"]["contents"][0]["itemSectionRenderer"]["contents"][index]["videoRenderer"]
-            
-            
-            json_data["Data" + str(index)] = {"videoId"   : Data["videoId"] ,
-            "thumbnail" : Data['thumbnail']['thumbnails'][-1]['url'] ,
-            "title"     : Data['title']["runs"][0]["text"] ,
-            "publishedTimeText" : Data['publishedTimeText']['simpleText'],
-            "views"     : Data['viewCountText']['simpleText'] ,
-            "Length"    : Data['lengthText']["simpleText"] } 
-            
-            Value = json_data["Data" + str(index)]
-            html += f"""
-            <div class="item horizontal-item">
-                <img src="{Data['thumbnail']['thumbnails'][-1]['url']}" alt="Item 2 Image" class="thumbnail">
-                <div class="data">
-                    <h3>{Data['title']["runs"][0]["text"]}</h3>
-                    <p>{Data['publishedTimeText']['simpleText']}</p>
-                    <p>{Data['viewCountText']['simpleText']}</p>
-                    <p>{Data['lengthText']["simpleText"]}</p>
-                    <a href="#" onclick="sendData({Value})">Details</a>
-                </div>
-            </div> """
-
-
-        except:
-            #print("Nothing! at ", index)
-            pass
-    if typo == 0 : return html 
-    else: return json_data
-
-
-
-def extract_audio_url(youtube_url):
-    youtube_url = "https://www.youtube.com/watch?v=" + youtube_url
-    try:
-        # Create a YouTube object
-        yt = YouTube(youtube_url)
-
-        # Get the highest quality audio stream directly
-        audio_stream = yt.streams.get_audio_only()
-
-        # Get the URL of the highest quality audio stream
-        audio_url = audio_stream.url if audio_stream else None
-
-        return audio_url
-    except Exception as e:
-        print("Error:", e)
-        return "404:" + str(e)
-
-
-##########################################################################################################################################################
+#Application!
 
 app = Flask(__name__)
 
@@ -353,15 +358,24 @@ def search():
             query = request.form['query'] + " Music"
             print("Search Query:", query)
             query = query.replace(" ", "+")
-            return index_html( Data_HTML(query , 0 ))
+            return index_html( yt_search(query , 0 ))
         except:
             data = request.get_json()
-            data['audio_url'] = extract_audio_url(data['videoId'])
+            data['audio_url'] = yt_url(data['videoId'])
             print("Data Processed:\n", Listen_html(data))
             return "request made"
     else:
         
         return index_html("")
+
+@app.route('/Data/<query>', methods=['GET', 'POST'])
+def Search(query):
+    global q_data
+    
+    print("Search Query:", query)
+    query = query.replace(" ", "+")
+    return  yt_search(query , 1 )
+        
 
 @app.route('/Listen', methods=['GET', 'POST'])
 def Listen():
@@ -373,7 +387,7 @@ def Listen():
             'views'         : request.args.get('views', 'No views provided'),
             'Length'         : request.args.get('Length', 'No length provided') 
             }
-    data['audio_url'] = extract_audio_url(data['videoId'])
+    data['audio_url'] = yt_url(data['videoId'])
 
     return Listen_html(data)
     
@@ -387,13 +401,9 @@ def Listen2():
             'views'         : request.args.get('views', 'No views provided'),
             'Length'         : request.args.get('Length', 'No length provided') 
             }
-    data['audio_url'] = extract_audio_url(data['videoId'])
+    data['audio_url'] = yt_url(data['videoId'])
 
     return data
     
 #if __name__ == "__main__":
 #    app.run(debug=True)
-
-    
-
-
